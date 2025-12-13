@@ -11,6 +11,12 @@
   Pico GP0 --> PWMA
   Pico GP1 --> PWMB
 */
+#include <Adafruit_NeoPixel.h>
+
+#define PIN       16
+#define NUMPIXELS 1
+
+Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 int count_left;
 int count_right;
@@ -25,6 +31,7 @@ void setup() {
   Serial.begin(9600);
   attachInterrupt(2, readEncoder_left, CHANGE);
   attachInterrupt(3, readEncoder_right, CHANGE);
+  pixels.begin();
 
 }
 
@@ -44,6 +51,8 @@ void loop() {
   Serial.print(count_left);
   Serial.print("\t");
   Serial.println(count_right);
+  pixels.setPixelColor(0, pixels.Color(100, 0, 0));
+  pixels.show();
   }
 
 
