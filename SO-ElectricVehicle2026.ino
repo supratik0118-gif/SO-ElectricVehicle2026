@@ -13,16 +13,16 @@
 */
 #include <Adafruit_NeoPixel.h>
 
-#define DISTANCE_T      5000
-#define TIME_T          5000
+#define DISTANCE_T      7000
+#define TIME_T          9000
 
-#define DISTANCE_TO_ENCODER_COUNT 1.4
+#define DISTANCE_TO_ENCODER_COUNT 0.77
 
 #define RGB_PIN         16
 #define NUMPIXELS       1
 
 #define LEFT_PWM        0
-#define RIGHT_PWN       1
+#define RIGHT_PWM       1
 
 #define LEFT_ENCODER    3
 #define RIGHT_ENCODER   2
@@ -38,7 +38,8 @@ bool run = 0;
 unsigned char distance_phase;
 
 unsigned int encoder_count[5];
-const unsigned char pwm[5] ={50, 150, 200, 150, 50};
+const unsigned char left_pwm[5] = {255, 255, 255, 255, 100};
+const unsigned char right_pwm[5] = {245, 245, 245, 245, 100};
 
 //const unsigned char pwm[5] ={100, 100, 100, 100, 100};
 volatile unsigned int count_left;
@@ -47,8 +48,11 @@ unsigned int count_left_buff;
 unsigned int count_right_buff;
 unsigned long start_millis;
 unsigned long current_millis;
-char left_offset;
-char right_offset;
+int left_offset;
+int right_offset;
+int both_offset;
+int time_to_reach;
+int distance_to_reach;
 
 void setup() {
   // put your setup code here, to run once:
@@ -59,7 +63,7 @@ void setup() {
   encoder_count[3] = (unsigned int) (DISTANCE_T * (float)DISTANCE_TO_ENCODER_COUNT/5) + encoder_count[2];
   encoder_count[4] = (unsigned int) (DISTANCE_T * (float)DISTANCE_TO_ENCODER_COUNT/5) + encoder_count[3];
   pinMode(LEFT_PWM, OUTPUT);
-  pinMode(RIGHT_PWN, OUTPUT);
+  pinMode(RIGHT_PWM, OUTPUT);
   pinMode(LEFT_ENCODER, INPUT);
   pinMode(RIGHT_ENCODER1, INPUT);
   count_left = 0;
@@ -111,7 +115,7 @@ void loop() {
     count_left_buff = count_left;
     count_right_buff = count_right;
     interrupts();
-    if(count_left > count_right)
+    if(count_left_buff > count_left_buff)
     {
       //left_offset = count_left - count_right;
       left_offset = 0;
@@ -124,15 +128,47 @@ void loop() {
       right_offset = 0;
     }
 
-    analogWrite(LEFT_PWM, pwm[distance_phase] - left_offset);
-    analogWrite(RIGHT_PWN, pwm[distance_phase] - right_offset);
+   
+    if((distance_phase == 4) || (distance_phase == 4)){
+      current_millis = millis();
+      time_to_reach = TIME_T - (current_millis - start_millis);
+      distance_to_reach = encoder_count[4] - count_left_buff;
+      both_offset = distance_to_reach - time_to_reach;
+      if(both_offset > 255)
+      {
+        both_offset = 255;
+      }
+      else if(both_offset <25)
+      {
+        both_offset = 25;
+      }
+      if((time_to_reach < 200) && (both_offset <100) && (distance_to_reach > time_to_reach))
+      {
+        both_offset += 100;
 
-    if(count_right_buff >= encoder_count[distance_phase]){
+      }
+      if(time_to_reach < 0)
+      {
+        both_offset = 255;
+      }
+      analogWrite(LEFT_PWM, both_offset);
+      analogWrite(RIGHT_PWM, both_offset);
+
+    }
+    else{
+      analogWrite(LEFT_PWM, left_pwm[distance_phase]);
+      analogWrite(RIGHT_PWM, right_pwm[distance_phase]);
+    }
+    
+    
+
+
+    if(count_left_buff >= encoder_count[distance_phase]){
       distance_phase++;
       if(distance_phase == 5){
         distance_phase = 0;
         analogWrite(LEFT_PWM, 0);
-        analogWrite(RIGHT_PWN, 0);
+        analogWrite(RIGHT_PWM, 0);
         run = 0;
         pixels.setPixelColor(0, pixels.Color(100, 0, 0));
         pixels.show();
@@ -141,9 +177,14 @@ void loop() {
       }
     }
 
-    Serial.print(count_left);
+    Serial.print(count_left_buff);
     Serial.print("\t");
-    Serial.println(count_right);
+    Serial.println(count_right_buff);
+    Serial.print(distance_to_reach);
+    Serial.print("\t");
+    Serial.print(time_to_reach);
+    Serial.print("\t");
+    Serial.println(both_offset);
 
 
   }
